@@ -29,6 +29,8 @@ int main()
 	while(1)
 	{
 
+			printf("Parent: %d\n Current: %d\n",parent,getpid());
+			fflush(stdout);
 		if(parent == getpid())
 		{
 			waitpid(recent_process,&exitMethod,0);
@@ -42,6 +44,7 @@ int main()
 			break;
 		}
 	}
+	return 0;
 }
 
 void getInput()
@@ -329,8 +332,8 @@ void redirection(char input[2048],int priority)
 		holder[q]='\0';
 	}
 	strcpy(input_file,holder);
-	printf("inputfile %s\n",input_file);	
-	fflush(stdout);
+//	printf("inputfile %s\n",input_file);	
+//	fflush(stdout);
 	q = 0;
 	if(output != -1)
 	{
@@ -349,13 +352,12 @@ void redirection(char input[2048],int priority)
 		holder2[q]='\0';
 	}
 	strcpy(output_file,holder2);
-	printf("outputfile %s\n",output_file);	
-	fflush(stdout);
-
-	printf("input output flipeed %d %d\n",inputFlip,outputFlip);	
-	fflush(stdout);
-	printf("input output nums %d %d\n",input_num,output);	
-	fflush(stdout);
+//	printf("outputfile %s\n",output_file);	
+//	fflush(stdout);
+//	printf("input output flipeed %d %d\n",inputFlip,outputFlip);	
+//	fflush(stdout);
+//	printf("input output nums %d %d\n",input_num,output);	
+//	fflush(stdout);
 	char endInput [2048];
 	if(outputFlip == 1)
 	{
@@ -382,6 +384,15 @@ void redirection(char input[2048],int priority)
 			input[input_num -1] = '\0';
 		}
 	}
+	printf("priority: %d %d\n", priority, outputFlip);	
+	fflush(stdout);
+	if(outputFlip == -1 && priority == 0)
+	{
+		printf("BackGround Process Screaming Into Blackhole\n");
+		fflush(stdout);
+		int fd = open("/dev/null",O_WRONLY | O_CREAT,0020);
+		dup2(fd,1);
+	}
 	if(outputFlip == 1)
 	{
 		int fd = open(output_file,O_WRONLY | O_CREAT,0020);
@@ -397,7 +408,14 @@ void redirection(char input[2048],int priority)
 	if(inputFlip == 1)
 	{
 		int fd = open(input_file,O_RDONLY,0001);
-		printf("fd = %d\n",fd);
+		if(fd < 0)
+		{
+			printf("Couldn't Open File\n");
+			fflush(stdout);
+			return;
+		}
+		//		printf("fd = %d\n",fd);
+		//		fflush(stdout);
 		dup2(fd,0);
 	}
 
