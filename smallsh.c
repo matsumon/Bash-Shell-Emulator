@@ -291,6 +291,8 @@ void redirection(char input[2048],int priority)
 {
 	int i;
 	int input_num = -1;
+	int inputFlip = -1;
+	int outputFlip = -1;
 	int output = -1;
 	char input_file [2048];
 	char output_file [2048];
@@ -301,10 +303,12 @@ void redirection(char input[2048],int priority)
 		if(input[i] == '<')
 		{
 			input_num = i;
+			inputFlip=1;
 		}
 		if(input[i] == '>')
 		{
 			output = i;
+			outputFlip=1;
 		}
 	}
 	int q = 0;
@@ -312,7 +316,7 @@ void redirection(char input[2048],int priority)
 	{
 		for(i = input_num+2; i < strlen(input); i++)
 		{
-			if(input[i] != ' ')
+			if(input[i] != ' ' && input[i] != '\0' )
 			{
 				holder[q] = input[i];
 				q++;
@@ -325,6 +329,8 @@ void redirection(char input[2048],int priority)
 		holder[q]='\0';
 	}
 	strcpy(input_file,holder);
+	printf("inputfile %s\n",input_file);	
+	fflush(stdout);
 	q = 0;
 	if(output != -1)
 	{
@@ -343,53 +349,56 @@ void redirection(char input[2048],int priority)
 		holder2[q]='\0';
 	}
 	strcpy(output_file,holder2);
-	char temp[2048];
-	strcpy(temp,input+input_num+2+strlen(input_file));	
-	int r = 0;
-	for( i = input_num -1; i < strlen(input)-2-strlen(input_file); i++)
+	printf("outputfile %s\n",output_file);	
+	fflush(stdout);
+
+	printf("input output flipeed %d %d\n",inputFlip,outputFlip);	
+	fflush(stdout);
+	printf("input output nums %d %d\n",input_num,output);	
+	fflush(stdout);
+	char endInput [2048];
+	if(outputFlip == 1)
 	{
-		input[i] = temp[r];
-		r++;
-	}
-	for(i = 0; i < strlen(input); i++)
-	{
-		if(input[i] == '>')
+		strcpy(endInput,input + output + 2);	
+		if(strlen(endInput) != strlen(output_file))
 		{
-			output = i;
+			strcpy(input+output,endInput+strlen(output_file)+1);
+		}	
+		else
+		{
+			input[output -1] = '\0';
 		}
 	}
-	char temp2[2048];
-	strcpy(temp2,input+output+2+strlen(output_file));	
-	r = 0;
-	//	printf("infiles %s\n",input_file);
-	//	fflush(stdout);
-	//	printf("outfiles %s\n",output_file);
-	//	fflush(stdout);
-	if(input[output+strlen(output_file)+1]!='\0')
+	char endInput2 [2048];
+	if(inputFlip == 1)
 	{
-		for( i = output -1; i < strlen(input)-2-strlen(output_file); i++)
+		strcpy(endInput2,input + input_num + 2);	
+		if(strlen(endInput2) != strlen(input_file))
 		{
-			input[i] = temp2[r];
-			r++;
+			strcpy(input+input_num,endInput2+strlen(input_file)+1);
+		}	
+		else
+		{
+			input[input_num -1] = '\0';
 		}
 	}
-	printf("input testing");
-	fflush(stdout);
-	printf("input last %s\n",input);
-	fflush(stdout);
-	printf("outfiles:%s\n",output_file);
-	fflush(stdout);
-	printf("size:%d\n",strlen(output_file));
-	fflush(stdout);
-	int fd;
-	if(output_file != '\0')	
+	if(outputFlip == 1)
 	{
-		fd = open(output_file,O_CREAT|O_TRUNC);
+		int fd = open(output_file,O_WRONLY | O_CREAT,0020);
+		printf("fd = %d\n",fd);
+		dup2(fd,1);
 	}
-	close(fd);
-	//chmod(output_file,"0777");
-	//		dup2(fd,1);
-
-
+	printf("Input:%s\n", input);
+	fflush(stdout);
+	printf("NUMS:%d %d\n ",inputFlip,outputFlip);
+	fflush(stdout);
+	printf("inputfile:%s\noutputfile:%s\n", input_file,output_file);
+	fflush(stdout);
+	if(inputFlip == 1)
+	{
+		int fd = open(input_file,O_RDONLY,0001);
+		printf("fd = %d\n",fd);
+		dup2(fd,0);
+	}
 
 }
