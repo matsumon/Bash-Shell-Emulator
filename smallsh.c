@@ -29,12 +29,22 @@ int main()
 	while(1)
 	{
 
-			printf("Parent: %d\n Current: %d\n",parent,getpid());
+		printf("Parent: %d\n Current: %d\n",parent,getpid());
+		fflush(stdout);
+		int i = 0;
+		printf("pid background: %d\n",holder[1]);
+		fflush(stdout);
+		while(holder[i] != 0)
+		{
+			printf("pid background: %d\n",holder[i]);
 			fflush(stdout);
+			i++;
+		}
 		if(parent == getpid())
 		{
 			waitpid(recent_process,&exitMethod,0);
-			forkCount--;
+			//	forkCount--;
+			fflush(stdout);
 			printf(": ");
 			fflush(stdout);
 			getInput();
@@ -95,34 +105,37 @@ void handleInput(char * input)
 	}
 	else 
 	{
-		int priority = findAnd(inputCopy); 	
-		if(forkCount < 4)
+		//	if(parent == getpid())
 		{
-			forkCount++;
-			id = fork();	
-			int current = getpid();
-			if(priority == 1 && parent == current)
+			int priority = findAnd(inputCopy); 	
+			if(forkCount < 4)
 			{
-				recent_process = id;
-			}
-			int i = 0;
-			if( priority == 0 && parent == current)
-			{
-				while(holder[i] != 0)
+				forkCount++;
+				id = fork();	
+				int current = getpid();
+				if(priority == 1 && parent == current)
 				{
-					i++;
+					recent_process = id;
 				}
-				holder[i] = current;
+				int i = 0;
+				if( priority == 0 && parent == current)
+				{
+					while(holder[i] != 0)
+					{
+						i++;
+					}
+					holder[i] = id;
+				}
 			}
-		}
-		else
-		{
-			printf("Too many forks");
-			fflush(stdout);
-		}
-		if(getpid() != parent)
-		{
-			execute(inputCopy,priority);	
+			else
+			{
+				printf("Too many forks");
+				fflush(stdout);
+			}
+			if(getpid() != parent)
+			{
+				execute(inputCopy,priority);	
+			}
 		}
 	}
 }
@@ -282,8 +295,8 @@ void execute(char input[2048],int priority)
 	for(j = 0; j<q; j++)
 	{
 		temp1[j] = splitInput[j];
-	//		printf("%s\n",splitInput[j]);
-	//			fflush(stdout);
+		//		printf("%s\n",splitInput[j]);
+		//			fflush(stdout);
 		//	printf("%d %s\n",j,temp1[j]);
 	}
 	temp1[q] = NULL;
@@ -332,8 +345,8 @@ void redirection(char input[2048],int priority)
 		holder[q]='\0';
 	}
 	strcpy(input_file,holder);
-//	printf("inputfile %s\n",input_file);	
-//	fflush(stdout);
+	//	printf("inputfile %s\n",input_file);	
+	//	fflush(stdout);
 	q = 0;
 	if(output != -1)
 	{
@@ -352,12 +365,12 @@ void redirection(char input[2048],int priority)
 		holder2[q]='\0';
 	}
 	strcpy(output_file,holder2);
-//	printf("outputfile %s\n",output_file);	
-//	fflush(stdout);
-//	printf("input output flipeed %d %d\n",inputFlip,outputFlip);	
-//	fflush(stdout);
-//	printf("input output nums %d %d\n",input_num,output);	
-//	fflush(stdout);
+	//	printf("outputfile %s\n",output_file);	
+	//	fflush(stdout);
+	//	printf("input output flipeed %d %d\n",inputFlip,outputFlip);	
+	//	fflush(stdout);
+	//	printf("input output nums %d %d\n",input_num,output);	
+	//	fflush(stdout);
 	char endInput [2048];
 	if(outputFlip == 1)
 	{
@@ -384,8 +397,16 @@ void redirection(char input[2048],int priority)
 			input[input_num -1] = '\0';
 		}
 	}
-	printf("priority: %d %d\n", priority, outputFlip);	
-	fflush(stdout);
+//	printf("priority: %d %d\n", priority, outputFlip);	
+//	fflush(stdout);
+	if(inputFlip == -1 && priority == 0)
+	{
+		printf("BackGround Process Taking Input From A Blackhole\n");
+		fflush(stdout);
+		int fd = open("/dev/null",O_WRONLY | O_CREAT,0020);
+		dup2(fd,0);
+	}
+
 	if(outputFlip == -1 && priority == 0)
 	{
 		printf("BackGround Process Screaming Into Blackhole\n");
@@ -393,18 +414,19 @@ void redirection(char input[2048],int priority)
 		int fd = open("/dev/null",O_WRONLY | O_CREAT,0020);
 		dup2(fd,1);
 	}
+
 	if(outputFlip == 1)
 	{
 		int fd = open(output_file,O_WRONLY | O_CREAT,0020);
 		printf("fd = %d\n",fd);
 		dup2(fd,1);
 	}
-	printf("Input:%s\n", input);
+/*	printf("Input:%s\n", input);
 	fflush(stdout);
 	printf("NUMS:%d %d\n ",inputFlip,outputFlip);
 	fflush(stdout);
 	printf("inputfile:%s\noutputfile:%s\n", input_file,output_file);
-	fflush(stdout);
+	fflush(stdout);*/
 	if(inputFlip == 1)
 	{
 		int fd = open(input_file,O_RDONLY,0001);
