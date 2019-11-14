@@ -18,33 +18,43 @@ void shellExit();
 void shellCD(char *);
 int expansion(char*);
 void shellStatus();
+void childStatus(int *);
 int findAnd(char*);
 void execute(char *, int);
 void redirection(char *, int);
+void sigintHandler(int);
 
 int main()
 {
+	signal(SIGINT,sigintHandler);
 	memset(holder,0,sizeof(holder[0]));
 	parent = getpid();
 	while(1)
 	{
 
-		printf("Parent: %d\n Current: %d\n",parent,getpid());
-		fflush(stdout);
+	//	printf("Main Parent: %d\nCurrent: %d\n",parent,getpid());
+	//	fflush(stdout);
 		int i = 0;
-		printf("pid background: %d\n",holder[1]);
-		fflush(stdout);
-		while(holder[i] != 0)
+	//	printf("pid background: %d\n",holder[1]);
+	//	fflush(stdout);
+	/*	while(holder[i] != 0)
 		{
 			printf("pid background: %d\n",holder[i]);
 			fflush(stdout);
 			i++;
-		}
+		}*/
 		if(parent == getpid())
 		{
 			waitpid(recent_process,&exitMethod,0);
-			//	forkCount--;
-			fflush(stdout);
+			int * childExitMethod=0;
+			int childpid=waitpid(-1,&childExitMethod,WNOHANG);
+			if(childpid > 0 && parent == getpid())
+			{
+				printf("Child PID: %d\n ",childpid);
+				fflush(stdout);
+				childStatus(childExitMethod);
+			}	
+				fflush(stdout);
 			printf(": ");
 			fflush(stdout);
 			getInput();
@@ -113,6 +123,11 @@ void handleInput(char * input)
 				forkCount++;
 				id = fork();	
 				int current = getpid();
+				if(priority == 0 && parent != current)
+				{
+					printf("\nChild PID: %d\n",current);
+					fflush(stdout);
+				}
 				if(priority == 1 && parent == current)
 				{
 					recent_process = id;
@@ -252,6 +267,25 @@ void shellStatus()
 			fflush(stdout);
 		}
 	}
+}
+
+void childStatus(int * childExitMethod)
+{
+	int i;
+	printf("here");
+	fflush(stdout);
+	if(i=WIFEXITED(childExitMethod)!=0)
+	{
+		printf("exit value %d\n",i);
+		fflush(stdout);
+	} 
+	else
+	{
+		i = WIFSIGNALED(childExitMethod);
+		printf("terminated by signal %d\n",i);
+		fflush(stdout);
+	}
+
 }
 
 int findAnd(char input [2048])
@@ -397,20 +431,20 @@ void redirection(char input[2048],int priority)
 			input[input_num -1] = '\0';
 		}
 	}
-//	printf("priority: %d %d\n", priority, outputFlip);	
-//	fflush(stdout);
+	//	printf("priority: %d %d\n", priority, outputFlip);	
+	//	fflush(stdout);
 	if(inputFlip == -1 && priority == 0)
 	{
-		printf("BackGround Process Taking Input From A Blackhole\n");
-		fflush(stdout);
+//		printf("BackGround Process Taking Input From A Blackhole\n");
+//		fflush(stdout);
 		int fd = open("/dev/null",O_WRONLY | O_CREAT,0020);
 		dup2(fd,0);
 	}
 
 	if(outputFlip == -1 && priority == 0)
 	{
-		printf("BackGround Process Screaming Into Blackhole\n");
-		fflush(stdout);
+//		printf("BackGround Process Screaming Into Blackhole\n");
+//		fflush(stdout);
 		int fd = open("/dev/null",O_WRONLY | O_CREAT,0020);
 		dup2(fd,1);
 	}
@@ -418,21 +452,27 @@ void redirection(char input[2048],int priority)
 	if(outputFlip == 1)
 	{
 		int fd = open(output_file,O_WRONLY | O_CREAT,0020);
-		printf("fd = %d\n",fd);
+		//printf("fd = %d\n",fd);
+		if(fd < 0)
+		{
+			printf("Couldn't Open File");
+			fflush(stdout);
+			return;
+		}
 		dup2(fd,1);
 	}
-/*	printf("Input:%s\n", input);
-	fflush(stdout);
-	printf("NUMS:%d %d\n ",inputFlip,outputFlip);
-	fflush(stdout);
-	printf("inputfile:%s\noutputfile:%s\n", input_file,output_file);
-	fflush(stdout);*/
+	/*	printf("Input:%s\n", input);
+		fflush(stdout);
+		printf("NUMS:%d %d\n ",inputFlip,outputFlip);
+		fflush(stdout);
+		printf("inputfile:%s\noutputfile:%s\n", input_file,output_file);
+		fflush(stdout);*/
 	if(inputFlip == 1)
 	{
 		int fd = open(input_file,O_RDONLY,0001);
 		if(fd < 0)
 		{
-			printf("Couldn't Open File\n");
+			printf("Couldn't Open File");
 			fflush(stdout);
 			return;
 		}
@@ -441,4 +481,10 @@ void redirection(char input[2048],int priority)
 		dup2(fd,0);
 	}
 
+}
+
+void sigintHandler(int signal)
+{
+	write(1,"CAUGHT SIGINT\n",104);
+	return;
 }
