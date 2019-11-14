@@ -14,6 +14,7 @@ int priority;
 pid_t id = -100;
 int recent_process = -10;
 int * exitMethod;
+volatile sig_atomic_t background_toggle=0;
 
 void getInput();
 void handleInput(char *);
@@ -25,11 +26,20 @@ void childStatus(int *);
 int findAnd(char*);
 void execute(char *, int);
 void redirection(char *, int);
-void sigintHandler(int);
+void signalStop(int);
+void signalTerm(int);
 
 int main()
 {
-	signal(SIGINT,sigintHandler);
+	struct sigaction sigStpHandler ={0};
+	sigStpHandler.sa_handler=signalStop;
+	sigfillset(&sigStpHandler.sa_mask);
+	sigStpHandler.sa_flags=0;
+	sigaction(SIGTSTP,&sigStpHandler,NULL);
+	struct sigaction sigIntHandler={0};
+	sigIntHandler.sa_handler=signalTerm;
+	sigfillset(&sigIntHandler.sa_mask);
+	sigaction(SIGINT,&sigIntHandler,NULL);
 	memset(holder,0,sizeof(holder[0]));
 	parent = getpid();
 	while(1)
@@ -49,6 +59,14 @@ int main()
 		if(parent == getpid())
 		{
 			waitpid(recent_process,&exitMethod,0);
+			if(WIFSIGNALED(exitMethod)!=0)
+			{
+				int z;
+				z = WIFSIGNALED(exitMethod);
+				printf("terminated by signal %d\n",z);
+				fflush(stdout);
+			}
+
 			int * childExitMethod=0;
 			int childpid = -1;
 			childpid=waitpid(-1,&childExitMethod,WNOHANG);
@@ -58,9 +76,11 @@ int main()
 				fflush(stdout);
 				childStatus(childExitMethod);
 			}	
+			clearerr(stdin);
 			fflush(stdout);
 			printf(": ");
 			fflush(stdout);
+			clearerr(stdin);
 			getInput();
 			if(id > 0 && priority == 0)
 			{
@@ -86,9 +106,13 @@ void getInput()
 
 void handleInput(char * input)
 {
+	if(input==NULL)
+	{
+		return;
+	}
 	char inputCopy [2048];
 	char inputCopy2 [2048];
-//	pid_t id = -100;
+	//	pid_t id = -100;
 	int check =1;
 	strcpy(inputCopy2,input);
 	while(check==1)
@@ -98,8 +122,8 @@ void handleInput(char * input)
 	}
 	strcpy(inputCopy,inputCopy2);
 	inputCopy[strlen(inputCopy)-1]=0;
-//	printf("%s\n",inputCopy);
-//	fflush(stdout);
+	//printf("%s\n",inputCopy);
+	//fflush(stdout);
 	free(input);
 	input = NULL;
 	char * exit1 = "exit";
@@ -127,9 +151,12 @@ void handleInput(char * input)
 		//	if(parent == getpid())
 		{
 			priority = findAnd(inputCopy); 	
+			if(background_toggle == 1)
+			{
+				priority = 1;
+			}
 			if(forkCount < 100)
 			{
-				errno = 0;
 				forkCount++;
 				id = fork();	
 				int current = getpid();
@@ -256,17 +283,18 @@ int expansion(char input [2048])
 
 void shellStatus()
 {
-	if(errno != 0)
-	{
-
-		printf("exit value 1\n");
-		fflush(stdout);
-		return;
-	}
 	if(recent_process == -10)
 	{
 		printf("no foreground 0\n");
 		fflush(stdout);
+		return;
+	}
+
+	if(errno != 10)
+	{
+		printf("exit value 1\n");
+		fflush(stdout);
+		return;
 	}
 	else
 	{
@@ -499,8 +527,23 @@ void redirection(char input[2048],int priority)
 
 }
 
-void sigintHandler(int signal)
+
+void signalStop(int signal)
 {
-	write(1,"CAUGHT SIGINT\n",104);
+	if(background_toggle == 0)
+	{
+		write(1,"Entering Foreground-only mode (& is now ignored)\n",50);
+		background_toggle= 1;
+	}
+	else if(background_toggle == 1)
+	{
+		write(1,"Exiting Foreground-only mode",29);
+		background_toggle= 0;
+	}
+
+	return;
+}
+void signalTerm(int signum)
+{
 	return;
 }
