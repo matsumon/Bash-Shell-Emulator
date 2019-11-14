@@ -495,7 +495,7 @@ void redirection(char input[2048],int priority)
 
 	if(outputFlip == 1)
 	{
-		int fd = open(output_file,O_WRONLY | O_CREAT,0020);
+		int fd = open(output_file,O_WRONLY | O_CREAT,0600);
 		//printf("fd = %d\n",fd);
 		if(fd < 0)
 		{
