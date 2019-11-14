@@ -5,10 +5,13 @@
 #include <signal.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <errno.h>
 
 int forkCount = 0;
 pid_t holder[512];
 int parent;
+int priority;
+pid_t id = -100;
 int recent_process = -10;
 int * exitMethod;
 
@@ -47,17 +50,23 @@ int main()
 		{
 			waitpid(recent_process,&exitMethod,0);
 			int * childExitMethod=0;
-			int childpid=waitpid(-1,&childExitMethod,WNOHANG);
-			if(childpid > 0 && parent == getpid())
+			int childpid = -1;
+			childpid=waitpid(-1,&childExitMethod,WNOHANG);
+			if(childpid > 0)
 			{
-				printf("Child PID: %d\n ",childpid);
+				printf("Child PID: %d has finished. \n ",childpid);
 				fflush(stdout);
 				childStatus(childExitMethod);
 			}	
-				fflush(stdout);
+			fflush(stdout);
 			printf(": ");
 			fflush(stdout);
 			getInput();
+			if(id > 0 && priority == 0)
+			{
+				printf("Child PID: %d was created. \n",id);
+				fflush(stdout);
+			}
 		}
 		else
 		{
@@ -79,7 +88,7 @@ void handleInput(char * input)
 {
 	char inputCopy [2048];
 	char inputCopy2 [2048];
-	pid_t id = -100;
+//	pid_t id = -100;
 	int check =1;
 	strcpy(inputCopy2,input);
 	while(check==1)
@@ -89,8 +98,8 @@ void handleInput(char * input)
 	}
 	strcpy(inputCopy,inputCopy2);
 	inputCopy[strlen(inputCopy)-1]=0;
-	printf("%s\n",inputCopy);
-	fflush(stdout);
+//	printf("%s\n",inputCopy);
+//	fflush(stdout);
 	free(input);
 	input = NULL;
 	char * exit1 = "exit";
@@ -117,17 +126,13 @@ void handleInput(char * input)
 	{
 		//	if(parent == getpid())
 		{
-			int priority = findAnd(inputCopy); 	
-			if(forkCount < 4)
+			priority = findAnd(inputCopy); 	
+			if(forkCount < 100)
 			{
+				errno = 0;
 				forkCount++;
 				id = fork();	
 				int current = getpid();
-				if(priority == 0 && parent != current)
-				{
-					printf("\nChild PID: %d\n",current);
-					fflush(stdout);
-				}
 				if(priority == 1 && parent == current)
 				{
 					recent_process = id;
@@ -146,10 +151,14 @@ void handleInput(char * input)
 			{
 				printf("Too many forks");
 				fflush(stdout);
+				return;
 			}
 			if(getpid() != parent)
 			{
 				execute(inputCopy,priority);	
+				printf("Couldnt find command\n");
+				fflush(stdout);
+				return;
 			}
 		}
 	}
@@ -247,6 +256,13 @@ int expansion(char input [2048])
 
 void shellStatus()
 {
+	if(errno != 0)
+	{
+
+		printf("exit value 1\n");
+		fflush(stdout);
+		return;
+	}
 	if(recent_process == -10)
 	{
 		printf("no foreground 0\n");
@@ -272,8 +288,6 @@ void shellStatus()
 void childStatus(int * childExitMethod)
 {
 	int i;
-	printf("here");
-	fflush(stdout);
 	if(i=WIFEXITED(childExitMethod)!=0)
 	{
 		printf("exit value %d\n",i);
@@ -285,6 +299,8 @@ void childStatus(int * childExitMethod)
 		printf("terminated by signal %d\n",i);
 		fflush(stdout);
 	}
+
+
 
 }
 
@@ -435,16 +451,16 @@ void redirection(char input[2048],int priority)
 	//	fflush(stdout);
 	if(inputFlip == -1 && priority == 0)
 	{
-//		printf("BackGround Process Taking Input From A Blackhole\n");
-//		fflush(stdout);
+		//		printf("BackGround Process Taking Input From A Blackhole\n");
+		//		fflush(stdout);
 		int fd = open("/dev/null",O_WRONLY | O_CREAT,0020);
 		dup2(fd,0);
 	}
 
 	if(outputFlip == -1 && priority == 0)
 	{
-//		printf("BackGround Process Screaming Into Blackhole\n");
-//		fflush(stdout);
+		//		printf("BackGround Process Screaming Into Blackhole\n");
+		//		fflush(stdout);
 		int fd = open("/dev/null",O_WRONLY | O_CREAT,0020);
 		dup2(fd,1);
 	}
