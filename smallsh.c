@@ -28,17 +28,19 @@ void execute(char *, int);
 void redirection(char *, int);
 void signalStop(int);
 void signalTerm(int);
+int checkForBlank(char *);
 
 int main()
 {
 	struct sigaction sigStpHandler ={0};
 	sigStpHandler.sa_handler=signalStop;
-	sigfillset(&sigStpHandler.sa_mask);
+	sigemptyset(&sigStpHandler.sa_mask);
 	sigStpHandler.sa_flags=0;
 	sigaction(SIGTSTP,&sigStpHandler,NULL);
 	struct sigaction sigIntHandler={0};
-	sigIntHandler.sa_handler=signalTerm;
-	sigfillset(&sigIntHandler.sa_mask);
+	sigIntHandler.sa_handler=SIG_IGN;
+	sigemptyset(&sigIntHandler.sa_mask);
+	sigaddset(&sigIntHandler.sa_mask,SIGINT);
 	sigaction(SIGINT,&sigIntHandler,NULL);
 	memset(holder,0,sizeof(holder[0]));
 	parent = getpid();
@@ -58,14 +60,16 @@ int main()
 		}*/
 		if(parent == getpid())
 		{
-			waitpid(recent_process,&exitMethod,0);
-			if(WIFSIGNALED(exitMethod)!=0)
+			/*if(priority == 1)
+			{
+				waitpid(recent_process,&exitMethod,0);
+			}
+			if(WIFSIGNALED(exitMethod)!=0 && priority == 1)
 			{
 				int z;
-				z = WIFSIGNALED(exitMethod);
-				printf("terminated by signal %d\n",z);
+				printf("terminated by signal %d\n",WTERMSIG(exitMethod));
 				fflush(stdout);
-			}
+			}*/
 
 			int * childExitMethod=0;
 			int childpid = -1;
@@ -115,6 +119,11 @@ void handleInput(char * input)
 	//	pid_t id = -100;
 	int check =1;
 	strcpy(inputCopy2,input);
+	if(checkForBlank(inputCopy2) == 0)
+	{
+		return;
+	}
+
 	while(check==1)
 	{
 		check =expansion(inputCopy2);
@@ -148,7 +157,7 @@ void handleInput(char * input)
 	}
 	else 
 	{
-		//	if(parent == getpid())
+		if(parent == getpid())
 		{
 			priority = findAnd(inputCopy); 	
 			if(background_toggle == 1)
@@ -160,9 +169,23 @@ void handleInput(char * input)
 				forkCount++;
 				id = fork();	
 				int current = getpid();
-				if(priority == 1 && parent == current)
+				if(priority == 1 && id )
 				{
 					recent_process = id;
+					//	wait(id);
+					//	printf("THINGS\n");
+					//	fflush(stdout);
+					if(priority == 1)
+					{
+						waitpid(id ,&exitMethod, 0);
+						if(WIFSIGNALED(exitMethod) !=0 )
+						{
+							int z;
+							printf("terminated by signal %d\n",WTERMSIG(exitMethod));
+							fflush(stdout);
+						}
+					}
+
 				}
 				int i = 0;
 				if( priority == 0 && parent == current)
@@ -185,6 +208,7 @@ void handleInput(char * input)
 				execute(inputCopy,priority);	
 				printf("Couldnt find command\n");
 				fflush(stdout);
+				exit(1);
 				return;
 			}
 		}
@@ -292,7 +316,7 @@ void shellStatus()
 
 	if(errno != 10)
 	{
-		printf("exit value 1\n");
+		printf("a exit value 1\n");
 		fflush(stdout);
 		return;
 	}
@@ -301,15 +325,16 @@ void shellStatus()
 		int i;
 		if(i=WIFEXITED(exitMethod)!=0)
 		{
-			printf("exit value %d\n",i);
+			printf("exit value: %d\n",WEXITSTATUS(exitMethod));
 			fflush(stdout);
 		} 
 		else
 		{
 			i = WIFSIGNALED(exitMethod);
-			printf("terminated by signal %d\n",i);
+			printf("terminated by signal %d\n",WTERMSIG(exitMethod));
 			fflush(stdout);
 		}
+		return;
 	}
 }
 
@@ -318,13 +343,13 @@ void childStatus(int * childExitMethod)
 	int i;
 	if(i=WIFEXITED(childExitMethod)!=0)
 	{
-		printf("exit value %d\n",i);
+		printf("child exit value %d\n",i);
 		fflush(stdout);
 	} 
 	else
 	{
 		i = WIFSIGNALED(childExitMethod);
-		printf("terminated by signal %d\n",i);
+		printf("child terminated by signal %d\n",WTERMSIG(childExitMethod));
 		fflush(stdout);
 	}
 
@@ -336,7 +361,7 @@ int findAnd(char input [2048])
 {
 	if(input[strlen(input)-1] == '&' && input[strlen(input)-2]==' ')
 	{
-		input[strlen(input)-1] ='\0';
+		input[strlen(input)-2] ='\0';
 		return 0;
 	}
 	else
@@ -378,6 +403,15 @@ void execute(char input[2048],int priority)
 		//	printf("%d %s\n",j,temp1[j]);
 	}
 	temp1[q] = NULL;
+	if(priority ==1)
+	{
+		struct sigaction sigIntHandler={0};
+		sigIntHandler.sa_handler=SIG_DFL;
+		sigemptyset(&sigIntHandler.sa_mask);
+		sigaddset(&sigIntHandler.sa_mask,SIGINT);
+		sigaction(SIGINT,&sigIntHandler,NULL);
+
+	}
 	int t = execvp(temp1[0],temp1);
 }
 
@@ -546,4 +580,18 @@ void signalStop(int signal)
 void signalTerm(int signum)
 {
 	return;
+}
+
+int checkForBlank(char input[2048])
+{
+	int i = 0;
+	for(i=0;i<strlen(input);i++)
+	{
+		if(input[i] != ' ' && input[i] !='\n')
+		{
+			return 1;
+		}
+
+	}
+	return 0;
 }
