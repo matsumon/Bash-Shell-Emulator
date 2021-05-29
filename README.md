@@ -1,4 +1,4 @@
-# smallshell
+# Bash Shell Emulator
 Program 3 – CS 344
 Overview
 
